@@ -48,6 +48,14 @@ func stickerCheck(m *models.Message) bool {
 	return false
 }
 
+func contactCheck(m *models.Message) bool {
+	if m.Contact != nil {
+		return true
+	}
+	return false
+}
+
+
 func simpleEmojiCheck(m *models.Message) bool {
 	count := uniseg.GraphemeClusterCount(m.Text)
 	if count == 1 && gomoji.ContainsEmoji(m.Text) {

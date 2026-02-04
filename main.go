@@ -228,6 +228,7 @@ func createMessageHandler(ctx context.Context, b *bot.Bot, m *models.Message) {
 		stickerCheck(m) ||
 		simpleEmojiCheck(m) ||
 		mentionCheck(m) ||
+		contactCheck(m) ||
 		linkCheck(m) {
 		success, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
 			ChatID:    m.Chat.ID,
@@ -286,6 +287,7 @@ func editMessageHandler(ctx context.Context, b *bot.Bot, m *models.Message) {
 			stickerCheck(m) ||
 			simpleEmojiCheck(m) ||
 			mentionCheck(m) ||
+			contactCheck(m) ||
 			linkCheck(m) {
 			success, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
 				ChatID:    m.Chat.ID,
