@@ -1,0 +1,16 @@
+# here is a golang project
+# Ignore the following files and directories
+
+.env
+
+__*
+*.log
+*.tmp
+
+updates/
+
+appinnCbot
+
+seens.json
+
+appinnCBot.service
