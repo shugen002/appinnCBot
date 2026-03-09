@@ -4,21 +4,21 @@ import (
 	"regexp"
 
 	"github.com/forPelevin/gomoji"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rivo/uniseg"
 )
 
-func mentionCheck(m *models.Message) bool {
+func mentionCheck(m *tgmodels.Message) bool {
 	hasMention := false
 	if m.Entities != nil {
 		for _, entity := range m.Entities {
-			if entity.Type == models.MessageEntityTypeMention || entity.Type == models.MessageEntityTypeTextMention {
+			if entity.Type == tgmodels.MessageEntityTypeMention || entity.Type == tgmodels.MessageEntityTypeTextMention {
 				hasMention = true
 				break
 			}
 		}
 		for _, entity := range m.CaptionEntities {
-			if entity.Type == models.MessageEntityTypeMention || entity.Type == models.MessageEntityTypeTextMention {
+			if entity.Type == tgmodels.MessageEntityTypeMention || entity.Type == tgmodels.MessageEntityTypeTextMention {
 				hasMention = true
 				break
 			}
@@ -27,7 +27,7 @@ func mentionCheck(m *models.Message) bool {
 	return hasMention
 }
 
-func usernameCheck(m *models.Message) bool {
+func usernameCheck(m *tgmodels.Message) bool {
 	firstname := m.From.FirstName
 	lastname := m.From.LastName
 	fullname := firstname + lastname
@@ -41,21 +41,21 @@ func usernameCheck(m *models.Message) bool {
 	return false
 }
 
-func stickerCheck(m *models.Message) bool {
+func stickerCheck(m *tgmodels.Message) bool {
 	if m.Sticker != nil {
 		return true
 	}
 	return false
 }
 
-func contactCheck(m *models.Message) bool {
+func contactCheck(m *tgmodels.Message) bool {
 	if m.Contact != nil {
 		return true
 	}
 	return false
 }
 
-func simpleEmojiCheck(m *models.Message) bool {
+func simpleEmojiCheck(m *tgmodels.Message) bool {
 	count := uniseg.GraphemeClusterCount(m.Text)
 	if count == 1 && gomoji.ContainsEmoji(m.Text) {
 		return true
@@ -63,24 +63,24 @@ func simpleEmojiCheck(m *models.Message) bool {
 	return false
 }
 
-func viaBotCheck(m *models.Message) bool {
+func viaBotCheck(m *tgmodels.Message) bool {
 	if m.ViaBot != nil {
 		return true
 	}
 	return false
 }
 
-func linkCheck(m *models.Message) bool {
+func linkCheck(m *tgmodels.Message) bool {
 	if m.Entities != nil {
 		for _, entity := range m.Entities {
-			if entity.Type == models.MessageEntityTypeURL || entity.Type == models.MessageEntityTypeTextLink {
+			if entity.Type == tgmodels.MessageEntityTypeURL || entity.Type == tgmodels.MessageEntityTypeTextLink {
 				return true
 			}
 		}
 	}
 	if m.CaptionEntities != nil {
 		for _, entity := range m.CaptionEntities {
-			if entity.Type == models.MessageEntityTypeURL || entity.Type == models.MessageEntityTypeTextLink {
+			if entity.Type == tgmodels.MessageEntityTypeURL || entity.Type == tgmodels.MessageEntityTypeTextLink {
 				return true
 			}
 		}
@@ -106,7 +106,7 @@ func init() {
 	}
 }
 
-func meaninglessCheck(m *models.Message) bool {
+func meaninglessCheck(m *tgmodels.Message) bool {
 	text := m.Text
 	if text == "" && m.Caption != "" {
 		text = m.Caption

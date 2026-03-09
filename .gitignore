@@ -12,5 +12,7 @@ updates/
 appinnCbot
 
 seens.json
+seens.json.bak
 
 appinnCBot.service
+appinn.db
