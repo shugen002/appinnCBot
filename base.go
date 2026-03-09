@@ -55,7 +55,6 @@ func contactCheck(m *models.Message) bool {
 	return false
 }
 
-
 func simpleEmojiCheck(m *models.Message) bool {
 	count := uniseg.GraphemeClusterCount(m.Text)
 	if count == 1 && gomoji.ContainsEmoji(m.Text) {
@@ -97,7 +96,9 @@ func init() {
 		`^(早安|午安|晚安)$`,
 		`^谢谢(你|您)?$`,
 		`^哈+$`,
+		`^点?赞$`,
 		`^\d+$`,
+		`偷拍`,
 	}
 	for _, pattern := range meaninglessPatterns {
 		re := regexp.MustCompile(pattern)

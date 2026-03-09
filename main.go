@@ -229,7 +229,8 @@ func createMessageHandler(ctx context.Context, b *bot.Bot, m *models.Message) {
 		simpleEmojiCheck(m) ||
 		mentionCheck(m) ||
 		contactCheck(m) ||
-		linkCheck(m) {
+		linkCheck(m) ||
+		meaninglessCheck(m) {
 		success, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
 			ChatID:    m.Chat.ID,
 			MessageID: m.ID,
@@ -288,7 +289,8 @@ func editMessageHandler(ctx context.Context, b *bot.Bot, m *models.Message) {
 			simpleEmojiCheck(m) ||
 			mentionCheck(m) ||
 			contactCheck(m) ||
-			linkCheck(m) {
+			linkCheck(m) ||
+			meaninglessCheck(m) {
 			success, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
 				ChatID:    m.Chat.ID,
 				MessageID: m.ID,
