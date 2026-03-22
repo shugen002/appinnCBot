@@ -70,35 +70,20 @@ func viaBotCheck(m *tgmodels.Message) bool {
 	return false
 }
 
-func linkCheck(m *tgmodels.Message) bool {
-	if m.Entities != nil {
-		for _, entity := range m.Entities {
-			if entity.Type == tgmodels.MessageEntityTypeURL || entity.Type == tgmodels.MessageEntityTypeTextLink {
-				return true
-			}
-		}
-	}
-	if m.CaptionEntities != nil {
-		for _, entity := range m.CaptionEntities {
-			if entity.Type == tgmodels.MessageEntityTypeURL || entity.Type == tgmodels.MessageEntityTypeTextLink {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 var meaninglessRegexs []regexp.Regexp
 
 func init() {
 	meaninglessPatterns := []string{
 		`^(大家|你|您)?(早上|中午|晚上)?好`,
 		`^(早安|午安|晚安)$`,
+		`^(签到|打卡)$`,
 		`^谢谢(你|您)?$`,
 		`^哈+$`,
 		`^点?赞$`,
 		`^\d+$`,
 		`偷拍`,
+		`破处`,
+		`幼女`,
 	}
 	for _, pattern := range meaninglessPatterns {
 		re := regexp.MustCompile(pattern)

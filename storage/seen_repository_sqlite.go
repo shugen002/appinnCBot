@@ -70,3 +70,16 @@ DO UPDATE SET count = seens.count - 1, updated_at = CURRENT_TIMESTAMP;
 	}
 	return r.GetCount(ctx, chatID, userID)
 }
+
+func (r *SQLiteSeenRepository) Increment(ctx context.Context, chatID, userID int64) (int64, error) {
+	_, err := r.db.ExecContext(ctx, `
+INSERT INTO seens (chat_id, user_id, count, updated_at)
+VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+ON CONFLICT(chat_id, user_id)
+DO UPDATE SET count = seens.count + 1, updated_at = CURRENT_TIMESTAMP;
+`, chatID, userID)
+	if err != nil {
+		return 0, fmt.Errorf("increment count: %w", err)
+	}
+	return r.GetCount(ctx, chatID, userID)
+}

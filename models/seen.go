@@ -17,4 +17,5 @@ type SeenRepository interface {
 	SetCount(ctx context.Context, chatID, userID, count int64) error
 	EnsureAtLeast(ctx context.Context, chatID, userID, minimum int64) (int64, error)
 	Decrement(ctx context.Context, chatID, userID int64) (int64, error)
+	Increment(ctx context.Context, chatID, userID int64) (int64, error)
 }

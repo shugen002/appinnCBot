@@ -180,6 +180,12 @@ func createMessageHandler(ctx context.Context, b *bot.Bot, m *tgmodels.Message) 
 		return
 	}
 
+	if m.NewChatMembers != nil || m.LeftChatMember != nil {
+		// ignore service messages
+		log.Printf("Ignoring service message No.%d from user %d in chat %d", m.ID, m.From.ID, m.Chat.ID)
+		return
+	}
+
 	if isPingCommand(m.Text) {
 		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: m.Chat.ID,
@@ -199,6 +205,12 @@ func createMessageHandler(ctx context.Context, b *bot.Bot, m *tgmodels.Message) 
 
 	if count > 0 {
 		log.Printf("Message No.%d from user %d in chat %d has count %d, ignoring", m.ID, m.From.ID, m.Chat.ID, count)
+		// and increment the count by 1
+		_, err := seenRepo.Increment(ctx, m.Chat.ID, m.From.ID)
+		if err != nil {
+			log.Printf("Error incrementing seen count for user %d in chat %d: %v", m.From.ID, m.Chat.ID, err)
+			return
+		}
 		return
 	}
 
