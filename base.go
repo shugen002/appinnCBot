@@ -74,16 +74,22 @@ var meaninglessRegexs []regexp.Regexp
 
 func init() {
 	meaninglessPatterns := []string{
-		`^(大家|你|您)?(早上|中午|晚上)?好`,
+		`^(大家|你|您)?(早上|中午|晚上)?好(.)?$`,
 		`^(早安|午安|晚安)$`,
 		`^(签到|打卡)$`,
 		`^谢谢(你|您)?$`,
+		`^看.我.这.里$`,
+		`^(看|点)(我?)(头像|主业|主页|这里)$`,
+		`^好看$`,
 		`^哈+$`,
-		`^点?赞$`,
+		`^点?赞+$`,
 		`^\d+$`,
+		`^\d+岁(，好看)?$`,
+		`^来看，\d+岁$`,
 		`偷拍`,
 		`破处`,
 		`幼女`,
+		`🔞`,
 	}
 	for _, pattern := range meaninglessPatterns {
 		re := regexp.MustCompile(pattern)
