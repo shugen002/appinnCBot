@@ -7,7 +7,7 @@ toolchain go1.24.5
 require (
 	github.com/forPelevin/gomoji v1.3.1
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/go-telegram/bot v1.20.0
+	github.com/go-telegram/bot v1.21.0
 	github.com/rivo/uniseg v0.4.7
 	modernc.org/sqlite v1.46.1
 )

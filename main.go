@@ -24,7 +24,55 @@ var seenRepo appmodels.SeenRepository
 
 var regexs = []regexp.Regexp{}
 
-var regexsLock *sync.RWMutex
+var regexsLock = &sync.RWMutex{}
+
+type regexConfig struct {
+	UsernamePatterns    []string `json:"username_patterns"`
+	MeaninglessPatterns []string `json:"meaningless_patterns"`
+}
+
+func compilePatterns(patterns []string) []regexp.Regexp {
+	compiled := make([]regexp.Regexp, 0, len(patterns))
+	for _, pattern := range patterns {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			log.Printf("Error compiling regex pattern %s: %v", pattern, err)
+			continue
+		}
+		compiled = append(compiled, *re)
+	}
+	return compiled
+}
+
+func loadRegexConfig(path string) ([]regexp.Regexp, []regexp.Regexp, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var cfg regexConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		var legacyPatterns []string
+		if legacyErr := json.Unmarshal(data, &legacyPatterns); legacyErr != nil {
+			return nil, nil, err
+		}
+		cfg.UsernamePatterns = legacyPatterns
+	}
+
+	if len(cfg.MeaninglessPatterns) == 0 {
+		cfg.MeaninglessPatterns = defaultMeaninglessPatterns
+	}
+
+	return compilePatterns(cfg.UsernamePatterns), compilePatterns(cfg.MeaninglessPatterns), nil
+}
+
+func replaceRegexConfig(usernameRegexs []regexp.Regexp, meaningless []regexp.Regexp) {
+	regexsLock.Lock()
+	defer regexsLock.Unlock()
+
+	regexs = usernameRegexs
+	meaninglessRegexs = meaningless
+}
 
 // Send any text message to the bot after the bot has been started
 func main() {
@@ -81,27 +129,15 @@ func main() {
 	defer db.Close()
 	seenRepo = storage.NewSQLiteSeenRepository(db)
 
+	replaceRegexConfig(nil, compilePatterns(defaultMeaninglessPatterns))
+
 	if _, err := os.Stat("regexs.hujson"); err == nil {
-		data, err := os.ReadFile("regexs.hujson")
+		usernameRegexs, meaningless, err := loadRegexConfig("regexs.hujson")
 		if err != nil {
-			log.Panicf("Error reading regexs.hujson: %v", err)
-		} else {
-			var patterns []string
-			if err := json.Unmarshal(data, &patterns); err != nil {
-				log.Panicf("Error unmarshalling regexs.hujson: %v", err)
-			} else {
-				for _, pattern := range patterns {
-					re, err := regexp.Compile(pattern)
-					if err != nil {
-						log.Printf("Error compiling regex pattern %s: %v", pattern, err)
-					} else {
-						regexs = append(regexs, *re)
-					}
-				}
-			}
+			log.Panicf("Error loading regexs.hujson: %v", err)
 		}
+		replaceRegexConfig(usernameRegexs, meaningless)
 	}
-	regexsLock = &sync.RWMutex{}
 
 	// watch regexs.hujson for changes and reload regexs
 	watcher, err := fsnotify.NewWatcher()
@@ -118,29 +154,13 @@ func main() {
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("Detected change in regexs.hujson, reloading...")
-					data, err := os.ReadFile("regexs.hujson")
+					usernameRegexs, meaningless, err := loadRegexConfig("regexs.hujson")
 					if err != nil {
-						log.Printf("Error reading regexs.hujson: %v", err)
+						log.Printf("Error loading regexs.hujson: %v", err)
 						continue
 					}
-					var patterns []string
-					if err := json.Unmarshal(data, &patterns); err != nil {
-						log.Printf("Error unmarshalling regexs.hujson: %v", err)
-						continue
-					}
-					var newRegexs []regexp.Regexp
-					for _, pattern := range patterns {
-						re, err := regexp.Compile(pattern)
-						if err != nil {
-							log.Printf("Error compiling regex pattern %s: %v", pattern, err)
-						} else {
-							newRegexs = append(newRegexs, *re)
-						}
-					}
-					regexsLock.Lock()
-					regexs = newRegexs
-					regexsLock.Unlock()
-					log.Printf("Reloaded %d regex patterns", len(newRegexs))
+					replaceRegexConfig(usernameRegexs, meaningless)
+					log.Printf("Reloaded %d username regex patterns and %d meaningless regex patterns", len(usernameRegexs), len(meaningless))
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {

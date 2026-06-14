@@ -8,6 +8,25 @@ import (
 	"github.com/rivo/uniseg"
 )
 
+var defaultMeaninglessPatterns = []string{
+	`^(大家|你|您)?(早上|中午|晚上)?好(.)?$`,
+	`^(早安|午安|晚安)$`,
+	`^(签到|打卡)$`,
+	`^谢谢(你|您)?$`,
+	`^看.我.这.里$`,
+	`^(看|点)(我?)(头像|主业|主页|这里)(,)$`,
+	`^好看$`,
+	`^哈+$`,
+	`^点?赞+$`,
+	`^\d+$`,
+	`^(\d+|(一二三四五六七八九十)+)岁(，.{1,4})?$`,
+	`^.{1,4}，看?(\d+|(一二三四五六七八九十)+)岁$`,
+	`偷拍`,
+	`破处`,
+	`看?(呦女|幼女|小学生|初中生|高中生|大学生)`,
+	`🔞`,
+}
+
 func mentionCheck(m *tgmodels.Message) bool {
 	hasMention := false
 	if m.Entities != nil {
@@ -72,31 +91,6 @@ func viaBotCheck(m *tgmodels.Message) bool {
 
 var meaninglessRegexs []regexp.Regexp
 
-func init() {
-	meaninglessPatterns := []string{
-		`^(大家|你|您)?(早上|中午|晚上)?好(.)?$`,
-		`^(早安|午安|晚安)$`,
-		`^(签到|打卡)$`,
-		`^谢谢(你|您)?$`,
-		`^看.我.这.里$`,
-		`^(看|点)(我?)(头像|主业|主页|这里)(,)$`,
-		`^好看$`,
-		`^哈+$`,
-		`^点?赞+$`,
-		`^\d+$`,
-		`^(\d+|(一二三四五六七八九十)+)岁(，.{1,4})?$`,
-		`^.{1,4}，看?(\d+|(一二三四五六七八九十)+)岁$`,
-		`偷拍`,
-		`破处`,
-		`看?(呦女|幼女|小学生|初中生|高中生|大学生)`,
-		`🔞`,
-	}
-	for _, pattern := range meaninglessPatterns {
-		re := regexp.MustCompile(pattern)
-		meaninglessRegexs = append(meaninglessRegexs, *re)
-	}
-}
-
 func meaninglessCheck(m *tgmodels.Message) bool {
 	text := m.Text
 	if text == "" && m.Caption != "" {
@@ -105,6 +99,9 @@ func meaninglessCheck(m *tgmodels.Message) bool {
 	if text == "" {
 		return false
 	}
+
+	regexsLock.RLock()
+	defer regexsLock.RUnlock()
 
 	for _, re := range meaninglessRegexs {
 		if re.MatchString(text) {

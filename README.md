@@ -31,6 +31,22 @@ go run ./cmd/migrate-seens -json seens.json -db appinn.db
 - 旧 `seens.json` 中“存在记录”的用户会迁移为 `count=1`。
 - 迁移命令是幂等的，重复执行不会把已迁移用户计数继续累加。
 
+## 正则配置
+
+主程序会从 `regexs.hujson` 读取两组正则，并在文件变更后自动热重载：
+
+```json
+{
+	"username_patterns": ["..."],
+	"meaningless_patterns": ["..."]
+}
+```
+
+说明：
+- `username_patterns` 用于用户名命中检查。
+- `meaningless_patterns` 用于首条消息内容命中检查。
+- 仍兼容旧格式：如果 `regexs.hujson` 顶层仍是字符串数组，则会按 `username_patterns` 处理，`meaningless_patterns` 使用内置默认值。
+
 ### 回滚说明
 若迁移后需要回滚：
 1. 停止服务进程。
