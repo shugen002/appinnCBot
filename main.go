@@ -234,6 +234,24 @@ func createMessageHandler(ctx context.Context, b *bot.Bot, m *tgmodels.Message) 
 		return
 	}
 
+	if strings.HasPrefix(m.Text, "/start ") {
+		// has 3 mention without info
+		count := 0
+		for _, entity := range m.Entities {
+			if entity.Type == tgmodels.MessageEntityTypeMention && entity.User == nil {
+				count++
+			}
+		}
+		if count >= 3 {
+			b.BanChatMember(ctx, &bot.BanChatMemberParams{
+				ChatID:         m.Chat.ID,
+				UserID:         m.From.ID,
+				RevokeMessages: true,
+			})
+			return
+		}
+	}
+
 	if usernameCheck(m) ||
 		viaBotCheck(m) ||
 		stickerCheck(m) ||
