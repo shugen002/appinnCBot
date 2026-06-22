@@ -22,13 +22,14 @@ import (
 
 var seenRepo appmodels.SeenRepository
 
-var regexs = []regexp.Regexp{}
+var usernameRegexes = []regexp.Regexp{}
 
 var regexsLock = &sync.RWMutex{}
 
-type regexConfig struct {
+type appConfig struct {
 	UsernamePatterns    []string `json:"username_patterns"`
 	MeaninglessPatterns []string `json:"meaningless_patterns"`
+	WhitelistDomains    []string `json:"whitelist_domains"`
 }
 
 func compilePatterns(patterns []string) []regexp.Regexp {
@@ -44,34 +45,31 @@ func compilePatterns(patterns []string) []regexp.Regexp {
 	return compiled
 }
 
-func loadRegexConfig(path string) ([]regexp.Regexp, []regexp.Regexp, error) {
+func loadAppConfig(path string) ([]regexp.Regexp, []regexp.Regexp, []string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	var cfg regexConfig
+	var cfg appConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		var legacyPatterns []string
 		if legacyErr := json.Unmarshal(data, &legacyPatterns); legacyErr != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		cfg.UsernamePatterns = legacyPatterns
 	}
 
-	if len(cfg.MeaninglessPatterns) == 0 {
-		cfg.MeaninglessPatterns = defaultMeaninglessPatterns
-	}
-
-	return compilePatterns(cfg.UsernamePatterns), compilePatterns(cfg.MeaninglessPatterns), nil
+	return compilePatterns(cfg.UsernamePatterns), compilePatterns(cfg.MeaninglessPatterns), cfg.WhitelistDomains, nil
 }
 
-func replaceRegexConfig(usernameRegexs []regexp.Regexp, meaningless []regexp.Regexp) {
+func replaceAppConfig(usernameRegexesCfg []regexp.Regexp, meaninglessRegexesCfg []regexp.Regexp, whitelist []string) {
 	regexsLock.Lock()
 	defer regexsLock.Unlock()
 
-	regexs = usernameRegexs
-	meaninglessRegexs = meaningless
+	usernameRegexes = usernameRegexesCfg
+	meaninglessRegexes = meaninglessRegexesCfg
+	whitelistDomain = append([]string(nil), whitelist...)
 }
 
 // Send any text message to the bot after the bot has been started
@@ -120,7 +118,7 @@ func main() {
 	}
 	dbPath := os.Getenv("SQLITE_PATH")
 	if dbPath == "" {
-		dbPath = "appinn.db"
+		log.Panic("SQLITE_PATH is required")
 	}
 	db, err := storage.OpenSQLite(dbPath)
 	if err != nil {
@@ -129,17 +127,13 @@ func main() {
 	defer db.Close()
 	seenRepo = storage.NewSQLiteSeenRepository(db)
 
-	replaceRegexConfig(nil, compilePatterns(defaultMeaninglessPatterns))
-
-	if _, err := os.Stat("regexs.hujson"); err == nil {
-		usernameRegexs, meaningless, err := loadRegexConfig("regexs.hujson")
-		if err != nil {
-			log.Panicf("Error loading regexs.hujson: %v", err)
-		}
-		replaceRegexConfig(usernameRegexs, meaningless)
+	usernameRegexesCfg, meaninglessRegexesCfg, whitelist, err := loadAppConfig("config.json")
+	if err != nil {
+		log.Panicf("Error loading config.json: %v", err)
 	}
+	replaceAppConfig(usernameRegexesCfg, meaninglessRegexesCfg, whitelist)
 
-	// watch regexs.hujson for changes and reload regexs
+	// watch config.json for changes and reload config
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Panicf("Error creating file watcher: %v", err)
@@ -153,14 +147,14 @@ func main() {
 					return
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Println("Detected change in regexs.hujson, reloading...")
-					usernameRegexs, meaningless, err := loadRegexConfig("regexs.hujson")
+					log.Println("Detected change in config.json, reloading...")
+					usernameRegexesCfg, meaninglessRegexesCfg, whitelist, err := loadAppConfig("config.json")
 					if err != nil {
-						log.Printf("Error loading regexs.hujson: %v", err)
+						log.Printf("Error loading config.json: %v", err)
 						continue
 					}
-					replaceRegexConfig(usernameRegexs, meaningless)
-					log.Printf("Reloaded %d username regex patterns and %d meaningless regex patterns", len(usernameRegexs), len(meaningless))
+					replaceAppConfig(usernameRegexesCfg, meaninglessRegexesCfg, whitelist)
+					log.Printf("Reloaded %d username regex patterns, %d meaningless regex patterns, and %d whitelist domains", len(usernameRegexesCfg), len(meaninglessRegexesCfg), len(whitelist))
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -172,8 +166,8 @@ func main() {
 			}
 		}
 	}()
-	if err := watcher.Add("regexs.hujson"); err != nil {
-		log.Panicf("Error adding regexs.hujson to watcher: %v", err)
+	if err := watcher.Add("config.json"); err != nil {
+		log.Panicf("Error adding config.json to watcher: %v", err)
 	}
 	me, err := b.GetMe(context.Background())
 	if err != nil {

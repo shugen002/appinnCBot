@@ -8,25 +8,6 @@ import (
 	"github.com/rivo/uniseg"
 )
 
-var defaultMeaninglessPatterns = []string{
-	`^(大家|你|您)?(早上|中午|晚上)?好(.)?$`,
-	`^(早安|午安|晚安)$`,
-	`^(签到|打卡)$`,
-	`^谢谢(你|您)?$`,
-	`^看.我.这.里$`,
-	`^(看|点)(我?)(头像|主业|主页|这里)(,)$`,
-	`^好看$`,
-	`^哈+$`,
-	`^点?赞+$`,
-	`^\d+$`,
-	`^(\d+|(一二三四五六七八九十)+)岁(，.{1,4})?$`,
-	`^.{1,4}，看?(\d+|(一二三四五六七八九十)+)岁$`,
-	`偷拍`,
-	`破处`,
-	`看?(呦女|幼女|小学生|初中生|高中生|大学生)`,
-	`🔞`,
-}
-
 func mentionCheck(m *tgmodels.Message) bool {
 	hasMention := false
 	if m.Entities != nil {
@@ -52,7 +33,7 @@ func usernameCheck(m *tgmodels.Message) bool {
 	fullname := firstname + lastname
 	regexsLock.RLock()
 	defer regexsLock.RUnlock()
-	for _, re := range regexs {
+	for _, re := range usernameRegexes {
 		if re.MatchString(firstname) || re.MatchString(lastname) || re.MatchString(fullname) {
 			return true
 		}
@@ -89,7 +70,7 @@ func viaBotCheck(m *tgmodels.Message) bool {
 	return false
 }
 
-var meaninglessRegexs []regexp.Regexp
+var meaninglessRegexes []regexp.Regexp
 
 func meaninglessCheck(m *tgmodels.Message) bool {
 	text := m.Text
@@ -103,7 +84,7 @@ func meaninglessCheck(m *tgmodels.Message) bool {
 	regexsLock.RLock()
 	defer regexsLock.RUnlock()
 
-	for _, re := range meaninglessRegexs {
+	for _, re := range meaninglessRegexes {
 		if re.MatchString(text) {
 			return true
 		}

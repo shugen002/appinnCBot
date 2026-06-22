@@ -7,11 +7,7 @@ import (
 	tgmodels "github.com/go-telegram/bot/models"
 )
 
-var whitelistDomain = []string{
-	"appinn.com",
-	"appinn.net",
-	"github.com",
-}
+var whitelistDomain = []string{}
 
 func linkCheck(m *tgmodels.Message) bool {
 	if m.Entities != nil {
@@ -37,6 +33,8 @@ func urlCheck(urlStr string) bool {
 	if err != nil {
 		return true
 	}
+	regexsLock.RLock()
+	defer regexsLock.RUnlock()
 	for _, domain := range whitelistDomain {
 		if urlObj.Host == domain || strings.HasSuffix(urlObj.Host, "."+domain) {
 			return false

@@ -1,62 +1,22 @@
 # appinnCBot
 
-## 迁移说明（SQLite）
 
-### 启动参数
-- `BOT_TOKEN`：Telegram Bot Token（必填）。
-- `SQLITE_PATH`：SQLite 数据库文件路径（可选，默认 `appinn.db`）。
 
-示例：
+## 配置文件
 
-```bash
-export BOT_TOKEN="<your-bot-token>"
-export SQLITE_PATH="./appinn.db"
-./appinnCbot
-```
-
-### 迁移命令（seens.json -> SQLite）
-先备份：
-
-```bash
-cp seens.json seens.json.bak
-```
-
-执行迁移：
-
-```bash
-go run ./cmd/migrate-seens -json seens.json -db appinn.db
-```
-
-说明：
-- 旧 `seens.json` 中“存在记录”的用户会迁移为 `count=1`。
-- 迁移命令是幂等的，重复执行不会把已迁移用户计数继续累加。
-
-## 正则配置
-
-主程序会从 `regexs.hujson` 读取两组正则，并在文件变更后自动热重载：
+主程序会从 `config.json` 读取配置，并在文件变更后自动热重载：
 
 ```json
 {
 	"username_patterns": ["..."],
-	"meaningless_patterns": ["..."]
+	"meaningless_patterns": ["..."],
+	"whitelist_domains": ["appinn.com", "appinn.net", "github.com"]
 }
 ```
 
 说明：
 - `username_patterns` 用于用户名命中检查。
 - `meaningless_patterns` 用于首条消息内容命中检查。
-- 仍兼容旧格式：如果 `regexs.hujson` 顶层仍是字符串数组，则会按 `username_patterns` 处理，`meaningless_patterns` 使用内置默认值。
+- `whitelist_domains` 用于链接白名单检查。
+- 不再提供内置默认值；请在 `config.json` 中显式配置所需字段。
 
-### 回滚说明
-若迁移后需要回滚：
-1. 停止服务进程。
-2. 删除或替换当前 SQLite 文件（默认 `appinn.db`）。
-3. 使用备份恢复旧数据文件：
-
-```bash
-cp seens.json.bak seens.json
-```
-
-4. 启动旧版本程序（使用 JSON 存储逻辑的版本）。
-
-> 当前代码已使用 SQLite 作为运行时状态存储，`seens.json` 不再被主程序实时读写。
