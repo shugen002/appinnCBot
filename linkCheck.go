@@ -13,14 +13,22 @@ func linkCheck(m *tgmodels.Message) bool {
 	if m.Entities != nil {
 		for _, entity := range m.Entities {
 			if entity.Type == tgmodels.MessageEntityTypeURL || entity.Type == tgmodels.MessageEntityTypeTextLink {
-				return urlCheck(entity.URL)
+				var url = entity.URL
+				if url == "" {
+					url = m.Text[entity.Offset : entity.Offset+entity.Length]
+				}
+				return urlCheck(url)
 			}
 		}
 	}
 	if m.CaptionEntities != nil {
 		for _, entity := range m.CaptionEntities {
 			if entity.Type == tgmodels.MessageEntityTypeURL || entity.Type == tgmodels.MessageEntityTypeTextLink {
-				return urlCheck(entity.URL)
+				var url = entity.URL
+				if url == "" {
+					url = m.Caption[entity.Offset : entity.Offset+entity.Length]
+				}
+				return urlCheck(url)
 			}
 		}
 	}
