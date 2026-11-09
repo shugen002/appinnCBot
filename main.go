@@ -27,9 +27,10 @@ var usernameRegexes = []regexp.Regexp{}
 var regexsLock = &sync.RWMutex{}
 
 type appConfig struct {
-	UsernamePatterns    []string `json:"username_patterns"`
-	MeaninglessPatterns []string `json:"meaningless_patterns"`
-	WhitelistDomains    []string `json:"whitelist_domains"`
+	UsernamePatterns     []string `json:"username_patterns"`
+	MeaninglessPatterns  []string `json:"meaningless_patterns"`
+	WhitelistDomains     []string `json:"whitelist_domains"`
+	WhitelistStickerSets []string `json:"whitelist_sticker_sets"`
 }
 
 func compilePatterns(patterns []string) []regexp.Regexp {
@@ -45,31 +46,32 @@ func compilePatterns(patterns []string) []regexp.Regexp {
 	return compiled
 }
 
-func loadAppConfig(path string) ([]regexp.Regexp, []regexp.Regexp, []string, error) {
+func loadAppConfig(path string) ([]regexp.Regexp, []regexp.Regexp, []string, []string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	var cfg appConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		var legacyPatterns []string
 		if legacyErr := json.Unmarshal(data, &legacyPatterns); legacyErr != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		cfg.UsernamePatterns = legacyPatterns
 	}
 
-	return compilePatterns(cfg.UsernamePatterns), compilePatterns(cfg.MeaninglessPatterns), cfg.WhitelistDomains, nil
+	return compilePatterns(cfg.UsernamePatterns), compilePatterns(cfg.MeaninglessPatterns), cfg.WhitelistDomains, cfg.WhitelistStickerSets, nil
 }
 
-func replaceAppConfig(usernameRegexesCfg []regexp.Regexp, meaninglessRegexesCfg []regexp.Regexp, whitelist []string) {
+func replaceAppConfig(usernameRegexesCfg []regexp.Regexp, meaninglessRegexesCfg []regexp.Regexp, whitelistDomains []string, whitelistStickerSetsCfg []string) {
 	regexsLock.Lock()
 	defer regexsLock.Unlock()
 
 	usernameRegexes = usernameRegexesCfg
 	meaninglessRegexes = meaninglessRegexesCfg
-	whitelistDomain = append([]string(nil), whitelist...)
+	whitelistDomain = append([]string(nil), whitelistDomains...)
+	whitelistStickerSets = append([]string(nil), whitelistStickerSetsCfg...)
 }
 
 // Send any text message to the bot after the bot has been started
@@ -127,11 +129,11 @@ func main() {
 	defer db.Close()
 	seenRepo = storage.NewSQLiteSeenRepository(db)
 
-	usernameRegexesCfg, meaninglessRegexesCfg, whitelist, err := loadAppConfig("config.json")
+	usernameRegexesCfg, meaninglessRegexesCfg, whitelistDomains, whitelistStickerSetsCfg, err := loadAppConfig("config.json")
 	if err != nil {
 		log.Panicf("Error loading config.json: %v", err)
 	}
-	replaceAppConfig(usernameRegexesCfg, meaninglessRegexesCfg, whitelist)
+	replaceAppConfig(usernameRegexesCfg, meaninglessRegexesCfg, whitelistDomains, whitelistStickerSetsCfg)
 
 	// watch config.json for changes and reload config
 	watcher, err := fsnotify.NewWatcher()
@@ -148,13 +150,13 @@ func main() {
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("Detected change in config.json, reloading...")
-					usernameRegexesCfg, meaninglessRegexesCfg, whitelist, err := loadAppConfig("config.json")
+					usernameRegexesCfg, meaninglessRegexesCfg, whitelistDomains, whitelistStickerSetsCfg, err := loadAppConfig("config.json")
 					if err != nil {
 						log.Printf("Error loading config.json: %v", err)
 						continue
 					}
-					replaceAppConfig(usernameRegexesCfg, meaninglessRegexesCfg, whitelist)
-					log.Printf("Reloaded %d username regex patterns, %d meaningless regex patterns, and %d whitelist domains", len(usernameRegexesCfg), len(meaninglessRegexesCfg), len(whitelist))
+					replaceAppConfig(usernameRegexesCfg, meaninglessRegexesCfg, whitelistDomains, whitelistStickerSetsCfg)
+					log.Printf("Reloaded %d username regex patterns, %d meaningless regex patterns, %d whitelist domains, and %d whitelist sticker sets", len(usernameRegexesCfg), len(meaninglessRegexesCfg), len(whitelistDomains), len(whitelistStickerSetsCfg))
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -174,6 +176,8 @@ func main() {
 		log.Fatalf("Error getting bot info: %v", err)
 	}
 	log.Printf("Bot started as %s (ID: %d)", me.Username, me.ID)
+
+	startUpdatesCleanup(ctx)
 
 	b.Start(ctx)
 }
@@ -228,6 +232,28 @@ func createMessageHandler(ctx context.Context, b *bot.Bot, m *tgmodels.Message) 
 		return
 	}
 
+	if m.From.IsBot && m.From.FirstName == "Group Help" && m.GuestBotCallerUser != nil {
+		if success, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
+			ChatID:    m.Chat.ID,
+			MessageID: m.ID,
+		}); err != nil {
+			log.Printf("Error deleting message No.%d from guest bot %d: %v", m.ID, m.From.ID, err)
+		} else if !success {
+			log.Printf("Failed to delete message No.%d from guest bot %d", m.ID, m.From.ID)
+		}
+
+		for _, userID := range []int64{int64(m.GuestBotCallerUser.ID), int64(m.From.ID)} {
+			if _, err := b.BanChatMember(ctx, &bot.BanChatMemberParams{
+				ChatID:         m.Chat.ID,
+				UserID:         userID,
+				RevokeMessages: true,
+			}); err != nil {
+				log.Printf("Error banning user %d in chat %d: %v", userID, m.Chat.ID, err)
+			}
+		}
+		return
+	}
+
 	if strings.HasPrefix(m.Text, "/start ") {
 		// has 3 mention without info
 		count := 0
@@ -244,6 +270,14 @@ func createMessageHandler(ctx context.Context, b *bot.Bot, m *tgmodels.Message) 
 			})
 			return
 		}
+	}
+
+	// 检查用户名或text是否有3个或以上空格，有的话先去除
+	if m.From.Username != "" && strings.Count(m.From.Username, " ") >= 3 {
+		m.From.Username = strings.ReplaceAll(m.From.Username, " ", "")
+	}
+	if strings.Count(m.Text, " ") >= 3 {
+		m.Text = strings.ReplaceAll(m.Text, " ", "")
 	}
 
 	if usernameCheck(m) ||

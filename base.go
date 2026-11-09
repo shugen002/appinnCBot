@@ -2,11 +2,14 @@ package main
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/forPelevin/gomoji"
 	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rivo/uniseg"
 )
+
+var whitelistStickerSets = []string{}
 
 func mentionCheck(m *tgmodels.Message) bool {
 	hasMention := false
@@ -42,10 +45,24 @@ func usernameCheck(m *tgmodels.Message) bool {
 }
 
 func stickerCheck(m *tgmodels.Message) bool {
-	if m.Sticker != nil {
+	if m.Sticker == nil {
+		return false
+	}
+
+	setName := m.Sticker.SetName
+	if setName == "" {
 		return true
 	}
-	return false
+
+	regexsLock.RLock()
+	defer regexsLock.RUnlock()
+	for _, allowedSet := range whitelistStickerSets {
+		if strings.EqualFold(allowedSet, setName) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func contactCheck(m *tgmodels.Message) bool {
@@ -57,7 +74,7 @@ func contactCheck(m *tgmodels.Message) bool {
 
 func simpleEmojiCheck(m *tgmodels.Message) bool {
 	count := uniseg.GraphemeClusterCount(m.Text)
-	if count == 1 && gomoji.ContainsEmoji(m.Text) {
+	if gomoji.ContainsEmoji(m.Text) && count <= 2 {
 		return true
 	}
 	return false
