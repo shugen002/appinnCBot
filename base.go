@@ -31,8 +31,8 @@ func mentionCheck(m *tgmodels.Message) bool {
 }
 
 func usernameCheck(m *tgmodels.Message) bool {
-	firstname := m.From.FirstName
-	lastname := m.From.LastName
+	firstname := strings.Join(strings.Fields(m.From.FirstName), "")
+	lastname := strings.Join(strings.Fields(m.From.LastName), "")
 	fullname := firstname + lastname
 	regexsLock.RLock()
 	defer regexsLock.RUnlock()

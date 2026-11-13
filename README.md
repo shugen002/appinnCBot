@@ -10,7 +10,8 @@
 {
 	"username_patterns": ["..."],
 	"meaningless_patterns": ["..."],
-	"whitelist_domains": ["appinn.com", "appinn.net", "github.com"]
+	"whitelist_domains": ["appinn.com", "appinn.net", "github.com"],
+	"whitelist_sticker_sets": ["rimochan"]
 }
 ```
 
@@ -18,5 +19,6 @@
 - `username_patterns` 用于用户名命中检查。
 - `meaningless_patterns` 用于首条消息内容命中检查。
 - `whitelist_domains` 用于链接白名单检查。
+- `whitelist_sticker_sets` 用于贴纸包白名单检查（命中名单中的贴纸包将放行）。
 - 不再提供内置默认值；请在 `config.json` 中显式配置所需字段。
 
