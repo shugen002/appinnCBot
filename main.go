@@ -232,7 +232,7 @@ func createMessageHandler(ctx context.Context, b *bot.Bot, m *tgmodels.Message) 
 		return
 	}
 
-	if m.From.IsBot && m.From.FirstName == "Group Help" && m.GuestBotCallerUser != nil {
+	if m.From.IsBot && m.GuestBotCallerUser != nil && inlineKeyboardCheck(m) {
 		if success, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
 			ChatID:    m.Chat.ID,
 			MessageID: m.ID,
@@ -250,6 +250,7 @@ func createMessageHandler(ctx context.Context, b *bot.Bot, m *tgmodels.Message) 
 			}); err != nil {
 				log.Printf("Error banning user %d in chat %d: %v", userID, m.Chat.ID, err)
 			}
+			log.Printf("Banned user %d in chat %d due to inline keyboard abuse. Message No.%d", userID, m.Chat.ID, m.ID)
 		}
 		return
 	}
