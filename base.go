@@ -109,3 +109,10 @@ func meaninglessCheck(m *tgmodels.Message) bool {
 
 	return false
 }
+
+func photoCheck(m *tgmodels.Message) bool {
+	if m.Photo != nil && len(m.Photo) > 0 {
+		return true
+	}
+	return false
+}

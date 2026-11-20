@@ -288,6 +288,7 @@ func createMessageHandler(ctx context.Context, b *bot.Bot, m *tgmodels.Message) 
 		mentionCheck(m) ||
 		contactCheck(m) ||
 		linkCheck(m) ||
+		photoCheck(m) ||
 		meaninglessCheck(m) {
 		success, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
 			ChatID:    m.Chat.ID,
